@@ -1,0 +1,6 @@
+{
+  "name": "dsh-profile-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "dsh-tudian 的测试夹具：一个模拟的 DSH profile，用来验证故障诊断分支。真实 DSH 不受影响。"
+}

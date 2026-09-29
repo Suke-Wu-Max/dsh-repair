@@ -1,0 +1,8 @@
+- insert:
+    - id: zh
+      name: 'deepseek-harness-zh-cn'
+    - id: workbench
+      name: 'dsh-workbench'
+    # 这一条是故意留的坑：登记了但 node_modules 里没有它
+    - id: say
+      name: 'dsh-say'

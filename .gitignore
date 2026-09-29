@@ -1,0 +1,15 @@
+# 运行产物（每次跑工具都会重新生成）
+dsh-tudian-log.txt
+dsh-tudian-boot-output.txt
+
+# 测试沙盒（测试自己会建、自己会清）
+_tools/_tmp/
+
+# 依赖（本工具零依赖，正常不会有）
+# ⚠️ 只排除**根目录**这一层（开头那个 / 是关键）：
+#    不能写成通用的 `node_modules/`，因为
+#    _tools/fake-home*/profiles/node_modules/ 是测试夹具**故意造出来**的
+#    "假依赖目录"，必须跟着夹具一起提交 ——
+#    否则别人 clone 下来跑 README 里那条演练命令，
+#    会得到"找不到 DSH 本体"，而不是预期的"插件加载失败"。
+/node_modules/

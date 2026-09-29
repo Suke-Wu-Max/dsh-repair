@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dsh-tudian · 架构设计</title>
+<style>
+  :root{
+    --bg:#14161a; --panel:#1c1f26; --panel2:#22262f; --line:#33384a;
+    --text:#e6e8ee; --dim:#98a0b3; --accent:#5aa9ff; --ok:#4ade80;
+    --warn:#fbbf24; --bad:#f87171; --purple:#c084fc;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 80px;
+    background:var(--bg); color:var(--text);
+    font:15px/1.7 "Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;
+  }
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:28px;margin:0 0 6px;letter-spacing:.5px}
+  h1 small{font-size:14px;color:var(--dim);font-weight:400;margin-left:10px}
+  h2{
+    font-size:19px;margin:44px 0 14px;padding-left:11px;
+    border-left:4px solid var(--accent);
+  }
+  h3{font-size:15px;margin:24px 0 8px;color:var(--accent)}
+  p{margin:8px 0}
+  .lead{color:var(--dim);margin-bottom:8px}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:18px 20px;margin:14px 0;
+  }
+  table{
+    width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    overflow:hidden;
+  }
+  th,td{
+    border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;
+  }
+  th{background:var(--panel2);color:var(--accent);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.015)}
+  code{
+    background:#0e1014;border:1px solid var(--line);border-radius:4px;
+    padding:1px 6px;font-family:Consolas,"Cascadia Mono",monospace;
+    font-size:13px;color:#9ad0ff;
+  }
+  pre{
+    background:#0e1014;border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;overflow:auto;font-family:Consolas,"Cascadia Mono",monospace;
+    font-size:13px;line-height:1.55;color:#c8d3e6;margin:12px 0;
+  }
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  .dim{color:var(--dim)} .purple{color:var(--purple)}
+  .tag{
+    display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--dim);margin-right:6px;
+  }
+  .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:16px 0}
+  .flow .box{
+    flex:1 1 150px;background:var(--panel);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px;position:relative;
+  }
+  .flow .box b{display:block;color:var(--accent);margin-bottom:4px;font-size:14px}
+  .flow .box span{font-size:13px;color:var(--dim)}
+  .flow .box.ro{border-color:#2e4a46}
+  .flow .box.ro b{color:var(--ok)}
+  .flow .box.rw{border-color:#5a3a3a}
+  .flow .box.rw b{color:var(--bad)}
+  .note{border-left:3px solid var(--warn);background:rgba(251,191,36,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+  .note.bad{border-left-color:var(--bad);background:rgba(248,113,113,.07)}
+  .note.ok{border-left-color:var(--ok);background:rgba(74,222,128,.06)}
+  .note b{color:inherit}
+  ul{margin:8px 0;padding-left:22px} li{margin:5px 0}
+  footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);color:var(--dim);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>dsh-tudian <small>DSH 启动失败修复工具 · 架构设计</small></h1>
+  <p class="lead">目标：让任何一个遇到 DSH 起不来的用户，敲一条命令就能修好 —— 不用知道任何路径、端口、内部机制。</p>
+
+  <div class="panel">
+    <span class="tag">零第三方依赖</span>
+    <span class="tag">Windows / macOS / Linux</span>
+    <span class="tag">Node ≥ 18 可运行</span>
+    <span class="tag">全中文</span>
+    <span class="tag">幂等 · 可回退</span>
+  </div>
+
+  <h2>一、一条命令，五个阶段</h2>
+  <p class="lead"><code>npx dsh-tudian</code> —— 用户只需要记住这一句。</p>
+
+  <div class="flow">
+    <div class="box ro"><b>① 探测</b><span>环境体检<br><b class="ok">全部只读</b></span></div>
+    <div class="box ro"><b>② 诊断</b><span>判定故障类型<br><b class="ok">纯判断</b></span></div>
+    <div class="box rw"><b>③ 修复</b><span>真正动手<br><b class="bad">唯一会写盘</b></span></div>
+    <div class="box ro"><b>④ 验证</b><span>端口 + HTTP<br>双重确认</span></div>
+    <div class="box ro"><b>⑤ 报告</b><span>中文报告<br>+ 日志留痕</span></div>
+  </div>
+
+  <div class="note ok">
+    <b>关键设计：三层严格分离。</b>
+    探测层只读 → 诊断层只判断 → 修复层才写盘。<br>
+    所以 <code>--dry-run</code>（只检测不修复）的安全性<b>是一眼可查的</b>：
+    想确认它有没有偷偷改东西，只需要 grep 一个文件 <code>lib/repair.mjs</code>。
+  </div>
+
+  <h2>二、分层与文件</h2>
+  <table>
+    <thead><tr><th>层</th><th>文件</th><th>职责</th><th>会写盘吗</th></tr></thead>
+    <tbody>
+      <tr><td>入口</td><td><code>bin/dsh-tudian.mjs</code></td><td>参数解析、帮助、退出码</td><td class="ok">否</td></tr>
+      <tr><td rowspan="6">基础</td><td><code>lib/exec.mjs</code></td><td>跨平台命令执行（三个平台坑都在这）</td><td class="ok">否</td></tr>
+      <tr><td><code>lib/log.mjs</code></td><td>日志（写不进来自动降级，绝不影响主流程）</td><td class="warn">日志文件</td></tr>
+      <tr><td><code>lib/ui.mjs</code></td><td>中文输出、进度、确认交互</td><td class="ok">否</td></tr>
+      <tr><td><code>lib/util.mjs</code></td><td>纯函数（版本比较、链接识别、路径缩写）</td><td class="ok">否</td></tr>
+      <tr><td><code>lib/net.mjs</code></td><td>端口与 HTTP 探测（<b>只用 net 模块</b>）</td><td class="ok">否</td></tr>
+      <tr><td><code>lib/registry.mjs</code></td><td>软件源探测与切换（温和档优先）</td><td class="warn">仅加 --persist-registry 时</td></tr>
+      <tr><td>探测层</td><td><code>lib/probe.mjs</code></td><td>系统 / Node / npm / DSH / profile / 端口 / 配置 / 备份</td><td class="ok">否</td></tr>
+      <tr><td>诊断层</td><td><code>lib/diagnose.mjs</code></td><td>七类故障判定 + 启动日志解析</td><td class="ok">否</td></tr>
+      <tr><td>修复层</td><td><code>lib/repair.mjs</code></td><td>备份 / 恢复 / 建链接 / 装包 / 启动 / 验证</td><td class="bad">是</td></tr>
+      <tr><td>编排层</td><td><code>lib/flow.mjs</code></td><td>把上面串成一条线 + 分派修复路径</td><td class="warn">间接</td></tr>
+      <tr><td>报告层</td><td><code>lib/report.mjs</code></td><td>打印中文报告与后续建议</td><td class="ok">否</td></tr>
+    </tbody>
+  </table>
+
+  <h2>三、故障诊断表</h2>
+  <p class="lead">诊断返回 <b>主因 + 次因</b>，不是一个菜市场清单 —— 因为 Node 版本太低的时候，后面那些"插件没装、端口没起来"全是<b>后果</b>，跑去修它们是浪费时间还可能改坏好配置。</p>
+
+  <table>
+    <thead><tr><th>故障</th><th>判据</th><th>自动修</th><th>怎么做</th></tr></thead>
+    <tbody>
+      <tr><td>Node 版本过低</td><td>版本 &lt; 22.19.0</td><td class="warn">否</td><td>给升级步骤（工具自身能在 18 上跑，就为了还能说这句话）</td></tr>
+      <tr><td>npm 没装</td><td>PATH 里找不到 npm</td><td class="warn">否</td><td>提示去装 Node.js</td></tr>
+      <tr><td>npm 跑不起来</td><td>命令在，执行失败</td><td class="warn">否</td><td><b>继续修别的</b> —— 恢复备份/建链接/启服务都不需要 npm</td></tr>
+      <tr><td>找不到 DSH 本体</td><td>六路探测全落空</td><td class="warn">否</td><td>提示用 <code>--home</code> 指定</td></tr>
+      <tr><td>没有可用 profile</td><td>profiles 目录下没有 profile</td><td class="warn">否</td><td>给出从模板新建的命令</td></tr>
+      <tr><td>profile 目录没写权限</td><td>目录不可写</td><td class="warn">否</td><td>给改权限的具体命令</td></tr>
+      <tr><td>配置文件损坏</td><td>Tab 缩进 / 顶层非数组 / 引号不闭合</td><td class="ok">是</td><td>从历史备份恢复（恢复前双重备份）</td></tr>
+      <tr><td>插件加载失败</td><td>登记的插件在 node_modules 里解析不到</td><td class="ok">是</td><td>见下方四级降级</td></tr>
+      <tr><td>端口被占用</td><td><b>打算用的那个</b>端口上不是 DSH</td><td class="ok">是</td><td>换空闲端口启动</td></tr>
+      <tr><td>服务未启动</td><td>端口没监听，配置正常</td><td class="ok">是</td><td>直接启动并等端口就绪</td></tr>
+      <tr><td>未知</td><td>静态检查都过，启动仍失败</td><td class="warn">否</td><td><b>老实说不确定</b>，把真实报错摆给用户</td></tr>
+    </tbody>
+  </table>
+
+  <h2>四、插件故障：刻意排好的四级降级</h2>
+  <div class="note bad">
+    <b>✗ 绝不能一上来就"禁用全部插件"</b> —— 那是拿用户的一整套插件去赌一个问题插件。
+  </div>
+  <table>
+    <thead><tr><th>级别</th><th>动作</th><th>代价</th><th>何时才用</th></tr></thead>
+    <tbody>
+      <tr><td>①</td><td><b>重建 node_modules 链接</b></td><td class="ok">插件功能完整保留</td><td>首选。实测本机就是这个状态：<code>plugins/dsh-say/</code> 目录好好的，只是少了一条链接</td></tr>
+      <tr><td>②</td><td>重新安装插件</td><td class="ok">功能保留，需联网</td><td>本地没源码时；用临时源，不动全局 npm 配置</td></tr>
+      <tr><td>③</td><td>停用<b>那一个</b>插件</td><td class="warn">只损失这一个</td><td>前两步修不好；用 DSH 原生 disabled 补丁，原内容零改动</td></tr>
+      <tr><td>④</td><td>安全模式（全部停用）</td><td class="bad">所有用户插件失效</td><td>最后手段。默认<b>不执行</b>，要用户点头（回车＝不动手），随时 <code>dsh-fix clear</code> 撤销</td></tr>
+    </tbody>
+  </table>
+
+  <h2>五、安全设计</h2>
+  <table>
+    <thead><tr><th>规矩</th><th>怎么落实</th></tr></thead>
+    <tbody>
+      <tr><td>改文件前先备份</td><td>命名 <code>xxx.bak-&lt;时间戳&gt;</code>，跟 DSH 自己的一致；<b>备份失败就中止整个流程</b></td></tr>
+      <tr><td>备份要幂等</td><td>备份前算 SHA-256 指纹，内容相同就复用 ⇒ 连跑十次也只有一份备份</td></tr>
+      <tr><td>只做加法不做减法</td><td>停用插件＝追加一条 disabled 补丁，<b>原内容一个字节都不动</b></td></tr>
+      <tr><td>不删用户数据</td><td>"清缓存"用的是 <code>npm cache verify</code>（只清损坏条目），<b>不是</b> <code>cache clean --force</code></td></tr>
+      <tr><td>不改用户配置</td><td>装包只给单条命令加 <code>--registry</code>；改全局源需显式 <code>--persist-registry</code>，且记录原值</td></tr>
+      <tr><td>不误删真目录</td><td>建链接时若发现同名<b>真实目录</b>，直接放弃并告诉用户，绝不删除</td></tr>
+      <tr><td>危险操作先问</td><td>总确认 + 恢复备份单独确认 + 安全模式默认否；非交互终端下默认<b>不</b>执行修改</td></tr>
+    </tbody>
+  </table>
+
+  <h2>六、三条来自真实踩坑的设计决定</h2>
+
+  <div class="note bad">
+    <b>① 端口探测只能用 Node 的 net 模块，不能用 netstat / Get-NetTCPConnection。</b><br>
+    实测：DSH 明明在 3080 上跑着，<code>Get-NetTCPConnection -LocalPort 3080 -State Listen</code> 却返回<b>空</b>，
+    于是判断成"端口空闲、服务没起来"—— <b>完全反了</b>。<br>
+    这类"系统工具被权限限制后静默返回空结果"的坑很阴险：它不报错，只是悄悄少给你东西，
+    然后你就把那个空结果当结论了。<code>net.connect()</code> 不受这类限制，跨平台行为也一致。
+  </div>
+
+  <div class="note bad">
+    <b>② Windows 上永远走 <code>npm.cmd</code>，绝不碰 <code>npm.ps1</code>。</b><br>
+    <code>npm.ps1</code> 会被 PowerShell 的默认执行策略直接拦掉（<i>running scripts is disabled</i>），
+    于是"装了 npm"被误判成"npm 不可用"，把用户引去重装 Node —— 而问题根本不在那儿。
+  </div>
+
+  <div class="note bad">
+    <b>③ "npm 跑不起来" ≠ "npm 没装"；"端口能通" ≠ "DSH 在跑"。</b><br>
+    实测两件事：受限环境里 npm 以 <code>EPERM</code> 失败，但那台机器 npm 装得好好的；
+    而 8000 端口上是个 <b>C-Lodop 打印服务</b>，它正常返回 HTTP 200，
+    早先的宽松逻辑把它认成 DSH，于是工具报告"服务运行正常、无需修复" ——
+    <b>用户以为工具检查过了，其实什么都没查。</b><br>
+    ⇒ 判据一律收紧：只有拿到<b>强证据</b>（响应里确实有 DSH 标识）才敢说"这是 DSH"。
+    假阳性比查不出来危险得多，因为它会让用户放心。
+  </div>
+
+  <h2>七、为什么它"通用"</h2>
+  <p class="lead">没有任何一处写死 —— 这是它跟"针对某台机器写的一次性脚本"的根本区别。</p>
+  <table>
+    <thead><tr><th>通常要写死的</th><th>它怎么现场问出来</th></tr></thead>
+    <tbody>
+      <tr><td>用户名 / 家目录</td><td>读 <code>$HOME</code> / <code>%USERPROFILE%</code>；报告里把路径缩成 <code>~</code> 保护隐私</td></tr>
+      <tr><td>DSH 装在哪</td><td>六路兜底逐个验证：<code>DSH_HOME</code> → <code>~/.dsh</code> → <code>profiles/node_modules</code> → 全局 npm root → <code>dsh</code> shim 反推 → npx 缓存<br><span class="dim">（本机实测：另有两个工具 <code>dsh-doctor</code>/<code>dsh-recovery</code> 因为只走一条路而报了"找不到 DSH 安装"）</span></td></tr>
+      <tr><td>默认端口</td><td><code>--port</code> → 环境变量 <code>DSH_WEB_URL</code> → 候选列表（3080/9800/7860/…）逐个真连一次</td></tr>
+      <tr><td>profile 叫什么</td><td>扫 <code>profiles/</code>，按"里面有 package.json 或 cordis.patch.yml"来认，<b>不认死 web</b></td></tr>
+      <tr><td>备份文件叫什么</td><td>认 <code>*.bak*</code> 前缀，不套固定格式 —— 实测同一台机器上就同时存在两种命名</td></tr>
+      <tr><td>哪个软件源能用</td><td>五个候选源<b>现场并发实测</b>，按延迟排序挑最快的</td></tr>
+      <tr><td>命令存在吗</td><td>遍历 PATH 找文件，<b>不调 where/which</b> —— 因为"调系统命令"本身就可能失败</td></tr>
+    </tbody>
+  </table>
+
+  <h2>八、用户能做的每一个动作</h2>
+  <pre>npx dsh-tudian                 探测 + 诊断 + 自动修复
+npx dsh-tudian --dry-run       只检测不修复（只读，推荐先跑）
+npx dsh-tudian --yes           全程不询问
+
+  --port &lt;端口&gt;     指定端口          --home &lt;路径&gt;    指定 DSH 主目录
+  --profile &lt;名字&gt;  指定 profile      --log &lt;路径&gt;     指定日志位置
+  --verbose, -v     多说细节          --quiet, -q      只说结果
+  --no-color        关彩色            --persist-registry  允许改全局 npm 源
+
+退出码：0 成功/正常/你取消了 · 2 没修好 · 3 工具自身出错 · 130 按了 Ctrl+C</pre>
+  <p>Windows 用户不想碰命令行：直接双击 <code>一键修复.bat</code>。</p>
+
+  <h2>九、交付物</h2>
+  <table>
+    <thead><tr><th>交付物</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>完整 Node.js 源码</td><td><code>bin/</code> + <code>lib/</code>，12 个文件，详细中文注释</td></tr>
+      <tr><td><code>package.json</code></td><td>声明 <code>bin</code>，支持 <code>npx dsh-tudian</code>；<code>engines: node &gt;= 18</code>；零依赖</td></tr>
+      <tr><td><code>README.md</code></td><td>简介、用法、故障对照表、安全说明、FAQ</td></tr>
+      <tr><td><code>一键修复.bat</code></td><td>Windows 双击入口（UTF-8 BOM 编码，中文不乱码）</td></tr>
+      <tr><td><code>design.html</code> + <code>open.vbs</code></td><td>本页（双击即看）</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>关于发布名：</b>npm 上已有一个别人的包叫 <code>dsh-repair</code>（是个插件形式的 skill，跟本工具不是一回事），
+    所以本工具最终定名 <b><code>dsh-tudian</code></b> —— 已查过，该名字未被占用。
+  </div>
+
+  <footer>
+    dsh-tudian · DSH 启动失败修复工具 · 架构设计<br>
+    本页由 <code>open.vbs</code> 双击打开 · 同一份内容的文字版见 <code>dsh-tudian-设计.md</code>
+  </footer>
+
+</div>
+</body>
+</html>

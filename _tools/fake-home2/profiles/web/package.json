@@ -1,0 +1,6 @@
+{
+  "name": "dsh-profile-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "dsh-tudian 的测试夹具：配置损坏场景。真实 DSH 不受影响。"
+}

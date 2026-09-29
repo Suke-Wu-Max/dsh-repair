@@ -1,0 +1,45 @@
+{
+  "name": "dsh-tudian",
+  "version": "0.1.0",
+  "description": "通用 DSH（DeepSeek Harness）启动失败自动诊断与修复工具：一条 npx 命令跑完 探测 → 诊断 → 修复 → 验证 → 报告",
+  "type": "module",
+  "bin": {
+    "dsh-tudian": "bin/dsh-tudian.mjs"
+  },
+  "main": "lib/index.mjs",
+  "files": [
+    "bin",
+    "lib",
+    "一键修复.bat",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node bin/dsh-tudian.mjs",
+    "dry": "node bin/dsh-tudian.mjs --dry-run",
+    "check": "node --check bin/dsh-tudian.mjs",
+    "test": "node _tools/test-backup.mjs && node _tools/test-diagnose.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "deepseek",
+    "repair",
+    "doctor",
+    "diagnose",
+    "startup",
+    "cordis",
+    "plugin",
+    "cli",
+    "cross-platform"
+  ],
+  "license": "MIT",
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ]
+}
